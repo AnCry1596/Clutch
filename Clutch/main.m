@@ -11,6 +11,7 @@
 #import "FrameworkLoader.h"
 #import "KJApplicationManager.h"
 #import "NSTask.h"
+#import "RootlessJB.h"
 #import "sha1.h"
 #import <Foundation/Foundation.h>
 #import <sys/time.h>
@@ -191,8 +192,9 @@ int main(int argc, const char *argv[]) {
                         break;
                     }
                     case ClutchCommandOptionClean: {
-                        [[NSFileManager defaultManager] removeItemAtPath:@"/var/tmp/clutch" error:nil];
-                        [[NSFileManager defaultManager] createDirectoryAtPath:@"/var/tmp/clutch"
+                        NSString *clutchTmpPath = jbRootPath(@"/var/tmp/clutch");
+                        [[NSFileManager defaultManager] removeItemAtPath:clutchTmpPath error:nil];
+                        [[NSFileManager defaultManager] createDirectoryAtPath:clutchTmpPath
                                                   withIntermediateDirectories:YES
                                                                    attributes:nil
                                                                         error:nil];

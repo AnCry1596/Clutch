@@ -11,6 +11,7 @@
 
 #import "ClutchPrint.h"
 #import "NSFileHandle+Private.h"
+#import "RootlessJB.h"
 #import "optool.h"
 #include <mach-o/fat.h>
 
@@ -127,8 +128,18 @@
 - (NSString *)binaryPath {
     NSString *path = [_bundle.executablePath copy];
 
-    if ([path hasPrefix:@"/var/mobile"]) {
-        path = [@"/private" stringByAppendingString:path];
+    // Handle both rootful and rootless jailbreak paths
+    // Rootful: /var/mobile -> /private/var/mobile
+    // Rootless: /var/jb/var/mobile -> /var/jb/private/var/mobile
+    if (isRootlessJailbreak()) {
+        if ([path hasPrefix:@"/var/jb/var/mobile"]) {
+            path = [path stringByReplacingOccurrencesOfString:@"/var/jb/var/mobile"
+                                                   withString:@"/var/jb/private/var/mobile"];
+        }
+    } else {
+        if ([path hasPrefix:@"/var/mobile"]) {
+            path = [@"/private" stringByAppendingString:path];
+        }
     }
 
     return path;

@@ -9,6 +9,7 @@
 #import "FinalizeDumpOperation.h"
 #import "Application.h"
 #import "ClutchPrint.h"
+#import "RootlessJB.h"
 #import "ZipArchive.h"
 #import "ZipOperation.h"
 #import <sys/time.h>
@@ -184,7 +185,8 @@ extern struct timeval gStart;
 
         __block BOOL status = plists.count == self.expectedBinariesCount;
 
-        NSString *_ipaPath = [@"/private/var/mobile/Documents/Dumped" stringByAppendingPathComponent:_zipFilename];
+        NSString *dumpedDirectory = jbRootPath(@"/private/var/mobile/Documents/Dumped");
+        NSString *_ipaPath = [dumpedDirectory stringByAppendingPathComponent:_zipFilename];
 
         if (!status) {
             // remove .ipa if failed
@@ -192,7 +194,7 @@ extern struct timeval gStart;
                 removeItemAtPath:[_application.workingPath stringByAppendingPathComponent:_zipFilename]
                            error:nil];
         } else {
-            [[NSFileManager defaultManager] createDirectoryAtPath:@"/private/var/mobile/Documents/Dumped"
+            [[NSFileManager defaultManager] createDirectoryAtPath:dumpedDirectory
                                       withIntermediateDirectories:YES
                                                        attributes:nil
                                                             error:nil];

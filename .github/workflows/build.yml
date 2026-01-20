@@ -1,0 +1,204 @@
+name: Build Clutch
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+    branches: [ master, main ]
+  workflow_dispatch:
+
+jobs:
+  build-xcode:
+    name: Build with Xcode
+    runs-on: macos-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Select Xcode version
+      run: |
+        # List available Xcode versions
+        ls /Applications | grep Xcode
+        # Use latest Xcode
+        sudo xcode-select -p
+
+    - name: Disable code signing
+      run: |
+        # Find the iOS SDK path
+        SDK_PATH=$(xcrun --sdk iphoneos --show-sdk-path)
+        echo "SDK Path: $SDK_PATH"
+
+        # Disable code signing requirement for ad-hoc builds
+        sudo /usr/libexec/PlistBuddy -c "Set :DefaultProperties:CODE_SIGNING_REQUIRED NO" "$SDK_PATH/SDKSettings.plist" || true
+        sudo /usr/libexec/PlistBuddy -c "Set :DefaultProperties:AD_HOC_CODE_SIGNING_ALLOWED YES" "$SDK_PATH/SDKSettings.plist" || true
+
+    - name: Build with xcodebuild
+      run: |
+        xcodebuild clean build \
+          -project Clutch.xcodeproj \
+          -scheme Clutch \
+          -sdk iphoneos \
+          -configuration Release \
+          CODE_SIGN_IDENTITY="" \
+          CODE_SIGNING_REQUIRED=NO \
+          CODE_SIGNING_ALLOWED=NO \
+          AD_HOC_CODE_SIGNING_ALLOWED=YES \
+          DEVELOPMENT_TEAM="" \
+          ONLY_ACTIVE_ARCH=NO
+
+    - name: Find and prepare binary
+      run: |
+        # Find the built binary
+        BUILD_DIR=$(xcodebuild -project Clutch.xcodeproj -scheme Clutch -sdk iphoneos -configuration Release -showBuildSettings | grep -m 1 "BUILT_PRODUCTS_DIR" | awk '{print $3}')
+        echo "Build directory: $BUILD_DIR"
+
+        # Create output directory
+        mkdir -p output
+
+        # Copy binary (it's inside the .app bundle)
+        if [ -f "$BUILD_DIR/Clutch.app/Clutch" ]; then
+          cp "$BUILD_DIR/Clutch.app/Clutch" output/Clutch
+          echo "Binary found in .app bundle"
+        elif [ -f "$BUILD_DIR/Clutch" ]; then
+          cp "$BUILD_DIR/Clutch" output/Clutch
+          echo "Binary found directly"
+        else
+          echo "Searching for Clutch binary..."
+          find ~/Library/Developer/Xcode/DerivedData -name "Clutch" -type f 2>/dev/null | head -5
+        fi
+
+        # Copy entitlements for signing on device
+        cp Clutch/Clutch.entitlements output/
+
+        # Show binary info
+        if [ -f output/Clutch ]; then
+          file output/Clutch
+          ls -la output/
+        fi
+
+    - name: Upload Xcode build artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: Clutch-xcode
+        path: output/
+        if-no-files-found: warn
+
+  build-cmake:
+    name: Build with CMake
+    runs-on: macos-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: |
+        brew install cmake
+
+    - name: Select Xcode version
+      run: |
+        sudo xcode-select -p
+
+    - name: Disable code signing
+      run: |
+        SDK_PATH=$(xcrun --sdk iphoneos --show-sdk-path)
+        echo "SDK Path: $SDK_PATH"
+        sudo /usr/libexec/PlistBuddy -c "Set :DefaultProperties:CODE_SIGNING_REQUIRED NO" "$SDK_PATH/SDKSettings.plist" || true
+        sudo /usr/libexec/PlistBuddy -c "Set :DefaultProperties:AD_HOC_CODE_SIGNING_ALLOWED YES" "$SDK_PATH/SDKSettings.plist" || true
+
+    - name: Configure CMake
+      run: |
+        mkdir -p build
+        cd build
+        cmake -DCMAKE_BUILD_TYPE=Release \
+              -DCMAKE_TOOLCHAIN_FILE=../cmake/iphoneos.toolchain.cmake \
+              ..
+
+    - name: Build with CMake
+      run: |
+        cd build
+        make -j$(sysctl -n hw.logicalcpu)
+
+    - name: Prepare artifacts
+      run: |
+        mkdir -p output
+
+        # Copy built binary
+        if [ -f build/build/Clutch ]; then
+          cp build/build/Clutch output/Clutch
+        elif [ -f build/Clutch/Clutch ]; then
+          cp build/Clutch/Clutch output/Clutch
+        elif [ -f build/Clutch.app/Clutch ]; then
+          cp build/Clutch.app/Clutch output/Clutch
+        fi
+
+        # Copy entitlements
+        cp Clutch/Clutch.entitlements output/
+
+        # Show binary info
+        if [ -f output/Clutch ]; then
+          file output/Clutch
+          ls -la output/
+        fi
+
+    - name: Upload CMake build artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: Clutch-cmake
+        path: output/
+        if-no-files-found: warn
+
+  release:
+    name: Create Release
+    needs: [build-xcode, build-cmake]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Download Xcode artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: Clutch-xcode
+        path: xcode-build
+
+    - name: Download CMake artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: Clutch-cmake
+        path: cmake-build
+
+    - name: Get version
+      id: version
+      run: |
+        VERSION=$(grep -oP 'MACOSX_BUNDLE_SHORT_VERSION_STRING "\K[^"]+' CMakeLists.txt || echo "2.0.4")
+        COMMIT_SHORT=$(git rev-parse --short HEAD)
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "commit=$COMMIT_SHORT" >> $GITHUB_OUTPUT
+        echo "Version: $VERSION, Commit: $COMMIT_SHORT"
+
+    - name: Prepare release files
+      run: |
+        mkdir -p release
+
+        # Prefer xcode build, fallback to cmake
+        if [ -f xcode-build/Clutch ]; then
+          cp xcode-build/Clutch release/Clutch
+          cp xcode-build/Clutch.entitlements release/
+        elif [ -f cmake-build/Clutch ]; then
+          cp cmake-build/Clutch release/Clutch
+          cp cmake-build/Clutch.entitlements release/
+        fi
+
+        # Create zip for release
+        cd release
+        zip -r ../Clutch-${{ steps.version.outputs.version }}-${{ steps.version.outputs.commit }}.zip .
+
+    - name: Upload release zip
+      uses: actions/upload-artifact@v4
+      with:
+        name: Clutch-release-${{ steps.version.outputs.version }}-${{ steps.version.outputs.commit }}
+        path: Clutch-*.zip

@@ -64,6 +64,7 @@ set(PRECOMPILED_HEADER ${CMAKE_CURRENT_SOURCE_DIR}/Clutch-Prefix.pch)
 set(SOURCE_SUPPORTING_FILES
     ../LSApplicationProxy.h
     ${PRECOMPILED_HEADER}
+    RootlessJB.h
     SCInfoBuilder.h
     SCInfoBuilder.m
     sha1.c

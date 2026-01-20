@@ -7,13 +7,16 @@
 //
 
 #define applistCachePath @"applist-cache.plist"
-#define dumpedAppPath @"/etc/dumped.clutch"
 
 #import "KJApplicationManager.h"
 #import "FBApplicationInfo.h"
 #import "LSApplicationProxy.h"
 #import "LSApplicationWorkspace.h"
+#import "RootlessJB.h"
 #import <dlfcn.h>
+
+// Rootless-aware path for dumped apps marker file
+#define dumpedAppPath (jbRootPath(@"/etc/dumped.clutch"))
 
 typedef NSDictionary *(*MobileInstallationLookup)(NSDictionary *options);
 

@@ -12,6 +12,7 @@
 #import "Device.h"
 #import "Dumper.h"
 #import "NSData+Reading.h"
+#import "RootlessJB.h"
 #import "optool.h"
 
 #include <fenv.h>
@@ -318,10 +319,24 @@
                                                                      withString:@""];
 
             // Move binary to correct path on iOS 9.2+
-            if ([_application.bundleContainerURL.path hasPrefix:@"/private/var/containers/Bundle/Application/"]) {
-                NSString *iOS92BundleContainerURL =
-                    [_application.bundleContainerURL.path stringByReplacingOccurrencesOfString:@"/private"
-                                                                                    withString:@""];
+            // Handle both rootful and rootless jailbreak paths
+            NSString *bundlePath = _application.bundleContainerURL.path;
+            NSString *rootfulPrefix = @"/private/var/containers/Bundle/Application/";
+            NSString *rootlessPrefix = @"/var/jb/private/var/containers/Bundle/Application/";
+
+            if ([bundlePath hasPrefix:rootfulPrefix] || [bundlePath hasPrefix:rootlessPrefix]) {
+                NSString *iOS92BundleContainerURL;
+                if ([bundlePath hasPrefix:rootlessPrefix]) {
+                    // Rootless: /var/jb/private/var/containers -> /var/jb/var/containers
+                    iOS92BundleContainerURL =
+                        [bundlePath stringByReplacingOccurrencesOfString:@"/var/jb/private"
+                                                              withString:@"/var/jb"];
+                } else {
+                    // Rootful: /private/var/containers -> /var/containers
+                    iOS92BundleContainerURL =
+                        [bundlePath stringByReplacingOccurrencesOfString:@"/private"
+                                                              withString:@""];
+                }
                 _localPath = [originalBinary.binaryPath stringByReplacingOccurrencesOfString:iOS92BundleContainerURL
                                                                                   withString:@""];
             }
