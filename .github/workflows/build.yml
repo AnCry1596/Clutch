@@ -217,8 +217,70 @@ jobs:
         cd release
         zip -r ../Clutch-${{ steps.version.outputs.version }}-${{ steps.version.outputs.commit }}.zip .
 
+    - name: Build .deb package
+      run: |
+        VERSION=${{ steps.version.outputs.version }}
+
+        # Create package directory structure
+        mkdir -p deb-package/DEBIAN
+        mkdir -p deb-package/var/jb/usr/bin
+
+        # Copy binary
+        if [ -f xcode-build/Clutch ]; then
+          cp xcode-build/Clutch deb-package/var/jb/usr/bin/Clutch
+        elif [ -f cmake-build/Clutch ]; then
+          cp cmake-build/Clutch deb-package/var/jb/usr/bin/Clutch
+        fi
+
+        chmod 755 deb-package/var/jb/usr/bin/Clutch
+
+        # Create control file
+        cat > deb-package/DEBIAN/control << CTRL
+        Package: com.ancry.clutch
+        Name: Clutch
+        Version: ${VERSION}
+        Architecture: iphoneos-arm64
+        Description: High-speed iOS decryption tool for educational purposes and security research. Supports rootless jailbreaks (Dopamine, palera1n).
+        Maintainer: AnCry1596
+        Author: KJCracks, AnCry1596
+        Section: Utilities
+        Depends: firmware (>= 12.0)
+        CTRL
+
+        # Remove leading spaces from control file
+        sed -i 's/^        //' deb-package/DEBIAN/control
+
+        # Create postinst script
+        cat > deb-package/DEBIAN/postinst << 'POSTINST'
+        #!/bin/bash
+        if [ -d "/var/jb" ]; then
+            chmod 755 /var/jb/usr/bin/Clutch
+        else
+            cp /var/jb/usr/bin/Clutch /usr/bin/Clutch 2>/dev/null || true
+            chmod 755 /usr/bin/Clutch 2>/dev/null || true
+        fi
+        if [ -f "/usr/bin/inject" ]; then
+            /usr/bin/inject /usr/bin/Clutch 2>/dev/null || true
+        fi
+        exit 0
+        POSTINST
+
+        sed -i 's/^        //' deb-package/DEBIAN/postinst
+        chmod 755 deb-package/DEBIAN/postinst
+
+        # Build .deb package
+        dpkg-deb --build deb-package "com.ancry.clutch_${VERSION}_iphoneos-arm64.deb"
+
+        ls -la *.deb
+
     - name: Upload release zip
       uses: actions/upload-artifact@v4
       with:
         name: Clutch-release-${{ steps.version.outputs.version }}-${{ steps.version.outputs.commit }}
         path: Clutch-*.zip
+
+    - name: Upload .deb package
+      uses: actions/upload-artifact@v4
+      with:
+        name: Clutch-deb-${{ steps.version.outputs.version }}
+        path: "*.deb"

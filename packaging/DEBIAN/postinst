@@ -1,0 +1,24 @@
+#!/bin/bash
+# Post-installation script for Clutch
+
+# Detect jailbreak type and set proper path
+if [ -d "/var/jb" ]; then
+    # Rootless jailbreak
+    CLUTCH_PATH="/var/jb/usr/bin/Clutch"
+else
+    # Rootful jailbreak - create symlink or move
+    CLUTCH_PATH="/usr/bin/Clutch"
+    if [ -f "/var/jb/usr/bin/Clutch" ]; then
+        cp /var/jb/usr/bin/Clutch /usr/bin/Clutch
+    fi
+fi
+
+# Set permissions
+chmod 755 "$CLUTCH_PATH" 2>/dev/null || true
+
+# Inject for unc0ver if needed
+if [ -f "/usr/bin/inject" ]; then
+    /usr/bin/inject "$CLUTCH_PATH" 2>/dev/null || true
+fi
+
+exit 0

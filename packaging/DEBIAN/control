@@ -1,0 +1,9 @@
+Package: com.ancry.clutch
+Name: Clutch
+Version: 2.0.5
+Architecture: iphoneos-arm64
+Description: High-speed iOS decryption tool for educational purposes and security research.
+Maintainer: AnCry1596
+Author: KJCracks, AnCry1596
+Section: Utilities
+Depends: firmware (>= 12.0)
