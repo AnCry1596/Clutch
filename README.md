@@ -2,7 +2,9 @@
 
 *Clutch* is a high-speed iOS decryption tool. Clutch supports the iPhone, iPod Touch, and iPad as well as all iOS version, architecture types, and most binaries. **Clutch is meant only for educational purposes and security research.**
 
-Clutch requires a jailbroken iOS device with version 8.0 or greater.
+Clutch requires a jailbroken iOS device with version 12.0 or greater (arm64 only).
+
+Supports both **rootful** (unc0ver, checkra1n) and **rootless** (Dopamine, palera1n) jailbreaks.
 
 # Usage
 
@@ -56,25 +58,60 @@ make -j$(sysctl -n hw.logicalcpu)
 
 ## Installation
 
-After building, a copy of the binary named `Clutch` is placed in the build directory. Copy this to your device:
+### Download Pre-built Binary
+
+Download the latest release from [GitHub Actions](../../actions) or the [Releases](../../releases) page.
+
+### Rootless Jailbreaks (Dopamine, palera1n)
+
+For rootless jailbreaks, the binary must be installed to `/var/jb/usr/bin/`:
 
 ```sh
-scp ./build/Clutch root@<your.device.ip>:/usr/bin/Clutch
+# Copy binary to device
+scp ./Clutch root@<your.device.ip>:/var/jb/usr/bin/Clutch
+scp ./Clutch.entitlements root@<your.device.ip>:/var/jb/usr/bin/
+
+# SSH into device and sign with ldid
+ssh root@<your.device.ip>
+ldid -S/var/jb/usr/bin/Clutch.entitlements /var/jb/usr/bin/Clutch
+chmod 755 /var/jb/usr/bin/Clutch
 ```
 
-If you are using [iproxy](http://iphonedevwiki.net/index.php/SSH_Over_USB), use this line (replace `2222` with a different port if necessary):
+### Rootful Jailbreaks (unc0ver, checkra1n)
 
 ```sh
-scp -P 2222 ./build/Clutch root@localhost:/usr/bin/Clutch
+# Copy binary to device
+scp ./Clutch root@<your.device.ip>:/usr/bin/Clutch
+scp ./Clutch.entitlements root@<your.device.ip>:/usr/bin/
+
+# SSH into device and sign with ldid
+ssh root@<your.device.ip>
+ldid -S/usr/bin/Clutch.entitlements /usr/bin/Clutch
+chmod 755 /usr/bin/Clutch
 ```
 
-When you SSH into your device, run `Clutch`.
+If you are using [iproxy](http://iphonedevwiki.net/index.php/SSH_Over_USB), add `-P 2222` to the scp commands.
 
-If you are using the [unc0ver jailbreak](https://www.theiphonewiki.com/wiki/Unc0ver), you may need to run the following:
+### Using the Install Script
+
+You can also use the included `install.sh` script on your device:
 
 ```sh
-inject /usr/bin/Clutch
+# Copy files to device
+scp ./Clutch ./Clutch.entitlements ./install.sh root@<your.device.ip>:/tmp/
+
+# SSH and run installer
+ssh root@<your.device.ip>
+cd /tmp && chmod +x install.sh && ./install.sh
 ```
+
+### Troubleshooting
+
+If you see `Killed: 9` or `zsh: killed`, the binary is not properly signed:
+
+1. Make sure you copied `Clutch.entitlements` to the device
+2. Re-sign with ldid: `ldid -S/path/to/Clutch.entitlements /path/to/Clutch`
+3. For unc0ver, also run: `inject /usr/bin/Clutch`
 
 # Licenses
 

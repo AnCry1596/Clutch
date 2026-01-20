@@ -49,6 +49,10 @@ jobs:
           ONLY_ACTIVE_ARCH=NO \
           IPHONEOS_DEPLOYMENT_TARGET=12.0
 
+    - name: Install ldid
+      run: |
+        brew install ldid
+
     - name: Find and prepare binary
       run: |
         # Find the built binary
@@ -73,6 +77,13 @@ jobs:
         # Copy entitlements for signing on device
         cp Clutch/Clutch.entitlements output/
 
+        # Sign with ldid using entitlements
+        if [ -f output/Clutch ]; then
+          echo "Signing binary with ldid..."
+          ldid -SClutch/Clutch.entitlements output/Clutch
+          echo "Binary signed successfully"
+        fi
+
         # Show binary info
         if [ -f output/Clutch ]; then
           file output/Clutch
@@ -96,7 +107,7 @@ jobs:
 
     - name: Install dependencies
       run: |
-        brew install cmake
+        brew install cmake ldid
 
     - name: Select Xcode version
       run: |
@@ -137,6 +148,13 @@ jobs:
 
         # Copy entitlements
         cp Clutch/Clutch.entitlements output/
+
+        # Sign with ldid using entitlements
+        if [ -f output/Clutch ]; then
+          echo "Signing binary with ldid..."
+          ldid -SClutch/Clutch.entitlements output/Clutch
+          echo "Binary signed successfully"
+        fi
 
         # Show binary info
         if [ -f output/Clutch ]; then
