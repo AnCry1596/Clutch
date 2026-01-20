@@ -26,7 +26,13 @@ set(SOURCE_DUMPERS
     Framework64Dumper.h
     Framework64Dumper.m
     FrameworkLoader.h
-    FrameworkLoader.m)
+    FrameworkLoader.m
+    MremapDecrypt.h
+    MremapDecrypt.m
+    MremapDumper.h
+    MremapDumper.m
+    MremapFrameworkDumper.h
+    MremapFrameworkDumper.m)
 source_group("Dumpers" FILES ${SOURCE_DUMPERS})
 list(APPEND SOURCE_FILES ${SOURCE_DUMPERS})
 

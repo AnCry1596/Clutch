@@ -11,6 +11,7 @@
 #import "ClutchPrint.h"
 #import "Device.h"
 #import "Dumper.h"
+#import "MremapDumper.h"
 #import "NSData+Reading.h"
 #import "RootlessJB.h"
 #import "optool.h"
@@ -365,11 +366,15 @@
 }
 
 + (NSArray *)availableDumpers {
-    return @[ NSClassFromString(@"ARM64Dumper"), NSClassFromString(@"ARMDumper") ];
+    // Prioritize MremapDumper (modern approach) over legacy dumpers
+    // MremapDumper uses mremap_encrypted syscall which works on modern iOS
+    // where task_for_pid is restricted
+    return @[ NSClassFromString(@"MremapDumper"), NSClassFromString(@"ARM64Dumper"), NSClassFromString(@"ARMDumper") ];
 }
 
 + (NSArray *)availableFrameworkDumpers {
-    return @[ NSClassFromString(@"FrameworkDumper"), NSClassFromString(@"Framework64Dumper") ];
+    // Prioritize MremapFrameworkDumper for modern iOS compatibility
+    return @[ NSClassFromString(@"MremapFrameworkDumper"), NSClassFromString(@"FrameworkDumper"), NSClassFromString(@"Framework64Dumper") ];
 }
 
 - (NSString *)description {
