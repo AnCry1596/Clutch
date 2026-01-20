@@ -3,36 +3,23 @@
 //  Clutch
 //
 //  Modern file-based decryption using mremap_encrypted syscall.
+//  Based on techniques from flexdecrypt, fouldecrypt, and UnFairPlay.
 //
 
 #import "MremapDecrypt.h"
 #import "ClutchPrint.h"
 #import <sys/mman.h>
 #import <sys/stat.h>
-#import <sys/syscall.h>
 #import <fcntl.h>
 #import <unistd.h>
 #import <dlfcn.h>
 #import <mach/mach.h>
 #import <libkern/OSByteOrder.h>
 
-// ptrace constants for self-debugging
-#define PT_TRACE_ME     0
-#define PT_ATTACHEXC    14
-
-// Code signing status
-#define CS_OPS_STATUS       0
-#define CS_DEBUGGED         0x10000000
-
-// External declarations
-extern int csops(pid_t pid, unsigned int ops, void *useraddr, size_t usersize);
-
 // mremap_encrypted declaration - this is in libc but not publicly declared
 extern int mremap_encrypted(void *addr, size_t len, uint32_t cryptid, uint32_t cputype, uint32_t cpusubtype);
 
 @implementation MremapDecrypt
-
-static BOOL _allowsInvalidCodesignedMemory = NO;
 
 + (BOOL)isAvailable {
     // mremap_encrypted is available on iOS 10+
@@ -42,39 +29,9 @@ static BOOL _allowsInvalidCodesignedMemory = NO;
 }
 
 + (BOOL)allowInvalidCodesignedMemory {
-    if (_allowsInvalidCodesignedMemory) {
-        return YES;
-    }
-
-    // Check if already debugged
-    uint32_t flags = 0;
-    csops(getpid(), CS_OPS_STATUS, &flags, sizeof(flags));
-    if (flags & CS_DEBUGGED) {
-        _allowsInvalidCodesignedMemory = YES;
-        return YES;
-    }
-
-    // Self-debug using fork + ptrace trick
-    // This marks the process as CS_DEBUGGED, allowing invalid codesigned pages
-    pid_t pid = fork();
-
-    if (pid == 0) {
-        // Child process - trace itself and exit
-        #pragma clang diagnostic push
-        #pragma clang diagnostic ignored "-Wdeprecated-declarations"
-        syscall(SYS_ptrace, PT_TRACE_ME, 0, 0, 0);
-        #pragma clang diagnostic pop
-        _exit(0);
-    } else if (pid < 0) {
-        KJPrint(@"fork() failed: %s", strerror(errno));
-        return NO;
-    }
-
-    // Wait for child to exit
-    int status;
-    waitpid(pid, &status, 0);
-
-    _allowsInvalidCodesignedMemory = YES;
+    // On jailbroken devices with proper entitlements, mremap_encrypted
+    // should work directly without needing CS_DEBUGGED flag.
+    // The entitlements in Clutch.entitlements provide the necessary permissions.
     return YES;
 }
 
