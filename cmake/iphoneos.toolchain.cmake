@@ -1,6 +1,7 @@
 set(CMAKE_SYSTEM_NAME Darwin)
 set(SDK iphoneos CACHE STRING "")
-set(CMAKE_OSX_ARCHITECTURES armv7 armv7s arm64 CACHE STRING "")
+# Only arm64 - 32-bit (armv7/armv7s) is no longer supported by modern iOS SDKs
+set(CMAKE_OSX_ARCHITECTURES arm64 CACHE STRING "")
 
 execute_process(COMMAND xcrun --sdk ${SDK} --find clang
                 OUTPUT_VARIABLE CMAKE_C_COMPILER
